@@ -55,7 +55,8 @@ void *initialize(const e_uint _segment_size) {
 }
 
 /* Flushes the SRAM cache, writing back only those words with DIRTY word_state in the cache. */
-void flush_and_writeback() {
+void flush_and_write_back() {
+    printf("SRAM cache full! Flushing and writing back dirty words...\n");
     for (const auto& pair : sram_map) {
         e_address address = pair.first;
         e_uint idx = pair.second.first;
@@ -70,8 +71,8 @@ void flush_and_writeback() {
 }
 
 e_data read_word(const e_address address) {
-    /* TODO bounds-check address? */
     printf("read_word at %x\n", address);
+    assert(address < M);
 
     if (!!sram_map.count(address)) {
         // cache hit
@@ -87,7 +88,7 @@ e_data read_word(const e_address address) {
         // Check if cache is full. If so, flush, write back, and
         // and fault the single new word into the cache.
         if (sram_map.size() == W) {
-            flush_and_writeback();
+            flush_and_write_back();
             SEG_SRAM[0] = value;
             sram_map[address] = std::pair<e_uint, word_state>(0, SYNC);
         }
@@ -100,6 +101,7 @@ e_data read_word(const e_address address) {
  */
 e_uint write_word(const e_address address, const e_data data) {
     printf("write_word %x at %x\n", data, address);
+    assert(address < M);
 
     // If it's in the cache already, update it.
     // If it's not, then put it in
@@ -108,11 +110,11 @@ e_uint write_word(const e_address address, const e_data data) {
     if (!!sram_map.count(address)) {
         e_uint idx = sram_map[address].first;
         SEG_SRAM[idx] = data;
-        sram_map[address] = std::pair<e_uint, word_state>(sram_map.size(), DIRTY); // TODO typecast map size to e_uint!
+        sram_map[address] = std::pair<e_uint, word_state>(idx, DIRTY);
     }
     else {
         if (sram_map.size() == W) {
-            flush_and_writeback();
+            flush_and_write_back();
             SEG_SRAM[0] = data;
             sram_map[address] = std::pair<e_uint, word_state>(0, SYNC);
         }
@@ -122,13 +124,13 @@ e_uint write_word(const e_address address, const e_data data) {
             sram_map[address] =  std::pair<e_uint, word_state>(sram_map.size(), DIRTY);
         }
     }
-    
 
     return data;
 }
 
 e_uint teardown() {
-    assert(munmap(segment_base, segment_size) == 0);
+    printf("ENDUReR done.\n");
+    //assert(munmap(segment_base, segment_size) == 0);
 
     return 0;
 }

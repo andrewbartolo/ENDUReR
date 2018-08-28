@@ -17,8 +17,11 @@ typedef unsigned long long e_address;
 typedef unsigned long long e_data;
 typedef unsigned long long e_uint;
 
-#define M (16384/sizeof(e_data))
-#define W (M/4) // TODO
+//#define M (16384/sizeof(e_data))
+//#define W (M/4) // TODO
+
+#define M 16
+#define W 4
 
 void *initialize(const e_uint _segment_size);
 e_data read_word(const e_address address);
