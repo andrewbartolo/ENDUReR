@@ -17,13 +17,16 @@ typedef unsigned long long e_address;
 typedef unsigned long long e_data;
 typedef unsigned long long e_uint;
 
-//#define M (16384/sizeof(e_data))
-//#define W (M/4) // TODO
-
 #define M 16
-#define W 4
+#define S 4
+#define TW 4
 
-void *initialize(const e_uint _segment_size);
+//#define M 524288
+//#define S 8192
+
+void initialize(const e_uint _segment_size);
+void write_back();
+void remap();
 e_data read_word(const e_address address);
 e_uint write_word(const e_address address, const e_data data);
 e_uint teardown();
@@ -33,3 +36,9 @@ e_uint teardown();
  */
 e_address get_segment_base();
 e_uint get_segment_size();
+
+/*
+ * Only exposing these for testing purposes.
+ */
+static inline e_address physical_to_virtual(e_address phys);
+static inline e_address virtual_to_physical(e_address virt);
