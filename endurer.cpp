@@ -1,12 +1,10 @@
 /*
- * Use static buffers as arenas of memory that we can use to act as the RRAM+SRAM memory area.
+ * Use static buffers as arenas of memory to act as RRAM and SRAM.
  */
 
 #include <assert.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <sys/mman.h>
 #include <time.h>
 #include <unordered_map>
 
@@ -20,10 +18,6 @@ typedef enum {
     DIRTY//,
     //INVALID   // currently unused (just check if present in the map instead)
 } word_state;
-
-/* Unused */
-static void *segment_base = NULL;
-static e_uint segment_size = 0;
 
 static e_uint relative_shift = 0;
 
@@ -61,14 +55,18 @@ void initialize(const e_uint seed) {
  * to-physical translation since physical addresses will change
  * when shifting occurs.
  */
-//TODO subtraction for unsigned quantities?
 //TODO note + and - switch for FWD-shift loop vs BWD-shift loop
 //(just follow the direction of the shift. data goes back, address goes back)
 static inline e_address physical_to_virtual(e_address phys) {
     return (phys + relative_shift) % M;
 }
+
+/*
+ * Note that, to deal with the fact that (virt - relative_shift) may underflow,
+ * we add an extra M before subtracting (and it works because (M + x) % M = x).
+ */
 static inline e_address virtual_to_physical(e_address virt) {
-    return (virt - relative_shift) % M;
+    return (virt + M - relative_shift) % M;
 }
 
 void write_back() {
@@ -104,21 +102,26 @@ void remap() {
     flush_and_write_back();
 
     for (e_uint i = 0; i < num_shift_loops; ++i) {
-        e_data tmp = SEG_RRAM[i];
+        e_data tmp = SEG_RRAM[i];   // cache the first element before clobbering it
+        e_uint dist = 0;
         for (e_uint j = 0; j < shifts_per_loop - 1; ++j) {
-            e_address curr_addr = (i + j*shift) % M;
+            e_address curr_addr = (i + dist) % M;
             e_address next_addr = (curr_addr + shift) % M;
 
             SEG_RRAM[curr_addr] = SEG_RRAM[next_addr];
+            dist += shift;
         }
-        e_address last_addr = (i - shift) % M;
-        SEG_RRAM[last_addr] = tmp;
+
+        e_address last_addr = (i + dist) % M;
+        assert(last_addr < M);
+
+        SEG_RRAM[last_addr] = tmp;  // now, put cached first element where it belongs
     }
 }
 
 e_data read_word(const e_address virt) {
     e_address address = virtual_to_physical(virt);
-    //printf("read_word at virtual [%x] (physical [%x])\n", virt, address);
+    printf("read_word at virtual [%x] (physical [%x])\n", virt, address);
     assert(address < M);
 
     if (!!sram_map.count(address)) {
