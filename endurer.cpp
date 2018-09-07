@@ -128,13 +128,13 @@ e_data read_word(const e_address virt) {
         // cache miss. go to RRAM, fault value into SRAM, return
         e_data value = SEG_RRAM[address];
 
-        // Check if cache is full. If so, flush, write back, and
-        // and fault the single new word into the cache.
+        // Check if cache is full. If so, flush and write back.
+        // Then, fault the single new word into the cache.
         if (sram_map.size() == S) {
             flush_and_write_back();
-            SEG_SRAM[0] = value;
-            sram_map[address] = std::pair<e_uint, word_state>(0, SYNC);
         }
+        SEG_SRAM[sram_map.size()] = value;
+        sram_map[address] = std::pair<e_uint, word_state>(sram_map.size(), SYNC);
         return value;
     }
 }
@@ -159,13 +159,9 @@ e_uint write_word(const e_address virt, const e_data data) {
     else {
         if (sram_map.size() == S) {
             flush_and_write_back();
-            SEG_SRAM[0] = data;
-            sram_map[address] = std::pair<e_uint, word_state>(0, DIRTY);
         }
-        else {
-            SEG_SRAM[sram_map.size()] = data;
-            sram_map[address] =  std::pair<e_uint, word_state>(sram_map.size(), DIRTY);
-        }
+        SEG_SRAM[sram_map.size()] = data;
+        sram_map[address] =  std::pair<e_uint, word_state>(sram_map.size(), DIRTY);
     }
 
     return data;
