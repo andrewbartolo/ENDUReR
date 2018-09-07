@@ -7,35 +7,34 @@
  * Symbols for segment size, remapping period, etc. are consistent with the paper.
  */
 
+#define M 16
+#define S 4
+
 /*
  * Here are some typedefs to make things work in the 64-bit Linux development
  * environment. These can be switched to 16-bit for the board itself.
  *
- * (Note that <stdint.> should *NOT* be included.)
+ * (Note that <stdint.h> should *NOT* be included.)
  */
+#define USE_16_BIT 1
+
+#if USE_16_BIT
+typedef unsigned short e_address;
+typedef unsigned short e_data;
+typedef unsigned short e_uint;
+#else
 typedef unsigned long long e_address;
 typedef unsigned long long e_data;
 typedef unsigned long long e_uint;
+#endif
 
-#define M 16
-#define S 4
-#define TW 4
 
-//#define M 524288
-//#define S 8192
-
-void initialize(const e_uint _segment_size);
+void initialize(const e_uint seed);
 void write_back();
 void remap();
 e_data read_word(const e_address address);
 e_uint write_word(const e_address address, const e_data data);
 e_uint teardown();
-
-/*
- * Getters and setters for the internal state of the ENDUReR mechanism.
- */
-e_address get_segment_base();
-e_uint get_segment_size();
 
 /*
  * Only exposing these for testing purposes.
