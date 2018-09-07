@@ -14,22 +14,46 @@
  * Defines the state of the word in the SRAM cache.
  */
 typedef enum {
+    INVALID, // has value 0; we'll memset to this to clear it
     SYNC,
-    DIRTY//,
-    //INVALID   // currently unused (just check if present in the map instead)
+    DIRTY
 } word_state;
 
 static e_uint relative_shift = 0;
 
-/* Maps address (e_address) to an index within SEG_SRAM. */
-static std::unordered_map<e_address, std::pair<e_uint, word_state>> sram_map;
+/*
+ * This is the pure-C replacement for the sram_map. It maps e_addresses
+ * to tuples of (index in SRAM cache, word state).
+ *
+ * Note that it may be a sparse map, and requires M slots.
+ */
+typedef struct {
+    e_address index;    // index, if present in the SRAM cache
+    word_state state;   // state (will be 0, i.e. INVALID, if not present)
+} sram_map_entry;
 
-/* Counters to track read and write statistics. */
-// TODO TODO WARN these are easily going to overflow with 16 bits!!
-//static e_uint num_sram_reads;
-//static e_uint num_rram_reads;
-//static e_uint num_sram_writes;
-//static e_uint num_rram_writes;
+static sram_map_entry sram_map[M];
+static e_uint sram_map_size = 0;
+
+static inline void sram_map_clear() {
+    memset(sram_map, 0, M * sizeof(sram_map_entry));
+    sram_map_size = 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Maps address (e_address) to an index within SEG_SRAM. */
+//static std::unordered_map<e_address, std::pair<e_uint, word_state>> sram_map;
 
 /*
  * On the 64-bit Linux dev environment, this will (need to) be a larger address.
@@ -70,12 +94,11 @@ static inline e_address virtual_to_physical(e_address virt) {
 }
 
 void write_back() {
-    for (const auto& pair : sram_map) {
-        e_address address = pair.first;
-        e_uint idx = pair.second.first;
-        word_state status = pair.second.second;
+    for (e_address address = 0; address < M; ++address) { // iterate through the whole sram_map table
+        e_uint idx = sram_map[address].index;
+        word_state state = sram_map[address].state;
 
-        if (status == DIRTY) {
+        if (state == DIRTY) {
             SEG_RRAM[address] = SEG_SRAM[idx];
         }
     }
@@ -85,7 +108,7 @@ void write_back() {
 void flush_and_write_back() {
     //printf("Flushing and writing back dirty words...\n");
     write_back();
-    sram_map.clear();
+    sram_map_clear();
 }
 
 /*
@@ -124,10 +147,10 @@ e_data read_word(const e_address virt) {
     printf("read_word at virtual [%x] (physical [%x])\n", virt, address);
     assert(address < M);
 
-    if (!!sram_map.count(address)) {
+    if (sram_map[address].state != INVALID) {
         // cache hit
-        e_uint idx = sram_map[address].first;
-        word_state status = sram_map[address].second;
+        e_uint idx = sram_map[address].index;
+        word_state state = sram_map[address].state;
         
         return SEG_SRAM[idx];
     }
@@ -137,10 +160,14 @@ e_data read_word(const e_address virt) {
 
         // Check if cache is full. If so, flush, write back, and
         // and fault the single new word into the cache.
-        if (sram_map.size() == S) {
+        if (sram_map_size == S) {
             flush_and_write_back();
             SEG_SRAM[0] = value;
-            sram_map[address] = std::pair<e_uint, word_state>(0, SYNC);
+            sram_map[address].index = 0; sram_map[address].state = SYNC; ++sram_map_size;
+        }
+        else {
+            SEG_SRAM[sram_map_size] = value;
+            sram_map[address].index = sram_map_size; sram_map[address].state = SYNC; ++sram_map_size;
         }
         return value;
     }
@@ -158,20 +185,20 @@ e_uint write_word(const e_address virt, const e_data data) {
     // If it's not, then put it in
     //      1.) check if full, flush-and-wb if so
     //      2.) if not full, just put in cache and indicate maybe-dirty
-    if (!!sram_map.count(address)) {
-        e_uint idx = sram_map[address].first;
+    if (sram_map[address].state != INVALID) {
+        e_uint idx = sram_map[address].index;
         SEG_SRAM[idx] = data;
-        sram_map[address] = std::pair<e_uint, word_state>(idx, DIRTY);
+        sram_map[address].index = idx; sram_map[address].state = DIRTY;
     }
     else {
-        if (sram_map.size() == S) {
+        if (sram_map_size == S) {
             flush_and_write_back();
             SEG_SRAM[0] = data;
-            sram_map[address] = std::pair<e_uint, word_state>(0, DIRTY);
+            sram_map[address].index = 0; sram_map[address].state = DIRTY; ++sram_map_size;
         }
         else {
-            SEG_SRAM[sram_map.size()] = data;
-            sram_map[address] =  std::pair<e_uint, word_state>(sram_map.size(), DIRTY);
+            SEG_SRAM[sram_map_size] = data;
+            sram_map[address].index = sram_map_size; sram_map[address].state = DIRTY; ++sram_map_size;
         }
     }
 
@@ -179,7 +206,7 @@ e_uint write_word(const e_address virt, const e_data data) {
 }
 
 e_uint teardown() {
-    sram_map.clear();
+    sram_map_clear();
 
     // zero buffers for good measure
     memset(SEG_SRAM, 0, S * sizeof(e_data));

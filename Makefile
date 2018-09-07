@@ -4,10 +4,10 @@ UNOPTLEVEL = -O0
 DEBUG = -g
 
 all:
-	$(CXX) main.cpp endurer.cpp -o endurer $(CXXFLAGS) $(OPTLEVEL)
+	$(CXX) main.c endurer.c -o endurer $(CXXFLAGS) $(OPTLEVEL)
 
 debug:
-	$(CXX) main.cpp endurer.cpp -o endurer $(CXXFLAGS) $(UNOPTLEVEL) $(DEBUG)
+	$(CXX) main.c endurer.c -o endurer $(CXXFLAGS) $(UNOPTLEVEL) $(DEBUG)
 
 clean:
 	rm -f endurer
@@ -16,4 +16,4 @@ run:
 	./endurer
 
 edit:
-	vim -p main.cpp endurer.cpp endurer.h Makefile
+	vim -p main.c endurer.c endurer.h Makefile
