@@ -162,13 +162,9 @@ e_data read_word(const e_address virt) {
         // and fault the single new word into the cache.
         if (sram_map_size == S) {
             flush_and_write_back();
-            SEG_SRAM[0] = value;
-            sram_map[address].index = 0; sram_map[address].state = SYNC; ++sram_map_size;
         }
-        else {
-            SEG_SRAM[sram_map_size] = value;
-            sram_map[address].index = sram_map_size; sram_map[address].state = SYNC; ++sram_map_size;
-        }
+        SEG_SRAM[sram_map_size] = value;
+        sram_map[address].index = sram_map_size; sram_map[address].state = SYNC; ++sram_map_size;
         return value;
     }
 }
@@ -193,13 +189,9 @@ e_uint write_word(const e_address virt, const e_data data) {
     else {
         if (sram_map_size == S) {
             flush_and_write_back();
-            SEG_SRAM[0] = data;
-            sram_map[address].index = 0; sram_map[address].state = DIRTY; ++sram_map_size;
         }
-        else {
-            SEG_SRAM[sram_map_size] = data;
-            sram_map[address].index = sram_map_size; sram_map[address].state = DIRTY; ++sram_map_size;
-        }
+        SEG_SRAM[sram_map_size] = data;
+        sram_map[address].index = sram_map_size; sram_map[address].state = DIRTY; ++sram_map_size;
     }
 
     return data;
