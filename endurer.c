@@ -4,9 +4,9 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <unordered_map>
 
 #include "endurer.h"
 
@@ -40,20 +40,6 @@ static inline void sram_map_clear() {
     sram_map_size = 0;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-/* Maps address (e_address) to an index within SEG_SRAM. */
-//static std::unordered_map<e_address, std::pair<e_uint, word_state>> sram_map;
 
 /*
  * On the 64-bit Linux dev environment, this will (need to) be a larger address.

@@ -1,13 +1,13 @@
-CXXFLAGS = -std=c++11
+CCFLAGS = -std=c11
 OPTLEVEL = -O3
 UNOPTLEVEL = -O0
 DEBUG = -g
 
 all:
-	$(CXX) main.c endurer.c -o endurer $(CXXFLAGS) $(OPTLEVEL)
+	$(CC) main.c endurer.c -o endurer $(CCFLAGS) $(OPTLEVEL)
 
 debug:
-	$(CXX) main.c endurer.c -o endurer $(CXXFLAGS) $(UNOPTLEVEL) $(DEBUG)
+	$(CC) main.c endurer.c -o endurer $(CCFLAGS) $(UNOPTLEVEL) $(DEBUG)
 
 clean:
 	rm -f endurer
